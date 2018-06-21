@@ -1,0 +1,40 @@
+name:                phab-circleci-bridge
+version:             0.1
+synopsis:            A minimal web server that bridges GHC's phabricator and Circle CI
+description:         A minimal web server that bridges GHC's phabricator and Circle CI
+homepage:            https://github.com/alpmestan/phab-circleci-bridge
+license:             BSD3
+license-file:        LICENSE
+author:              Alp Mestanogullari
+maintainer:          alp@well-typed.com
+category:            Web
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+
+executable phab-circleci-bridge
+  main-is:             Main.hs
+  build-depends:       aeson
+                     , base >=4.9 && <5
+                     , bytestring
+                     , circlehs
+                     , config-manager
+                     , directory
+                     , filepath
+                     , http-client
+                     , http-client-tls
+                     , http-api-data
+                     , mtl
+                     , process
+                     , serialise
+                     , servant-client
+                     , servant-server
+                     , stm
+                     , temporary
+                     , text
+                     , time
+                     , unordered-containers
+                     , warp
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+  ghc-options:         -rtsopts -threaded -Wall
