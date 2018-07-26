@@ -352,7 +352,13 @@ builder cfg queue = do
               Just BuildNoTests -> Pass
               _                 -> Fail
 
-            units = concatMap ciStepToPhabUnit (maybe [] steps $ taskInfo t)
+            -- TODO: keep the list of steps from the previous
+            -- update and just send the diff to phabricator, to
+            -- avoid the duplicates we can see in:
+            -- https://phabricator.haskell.org/harbormaster/unit/21613/
+            units = case msgtype of
+              Work -> []
+              _    -> concatMap ciStepToPhabUnit (maybe [] steps $ taskInfo t)
 
 -- * Phabricator
 
