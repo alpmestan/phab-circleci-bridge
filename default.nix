@@ -22,8 +22,4 @@ let
       servant-server = tweak (self.callHackage "servant-server" "0.14" {});
     };
   });
-in
-
-  hsPkgs.callPackage ./phab-circleci-bridge.nix {
-    git = pkgs.gitAndTools.gitFull;
-  }
+in hsPkgs.callPackage ./phab-circleci-bridge.nix {}

@@ -67,6 +67,7 @@ in {
       description = "Phabricator <-> Circle CI bridge";
       after = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
+      path = [ pkgs.gitAndTools.gitFull ];
       serviceConfig = {
         ExecStart = ''
           ${cfg.pkg}/bin/phab-circleci-bridge ${configFile} +RTS -N
