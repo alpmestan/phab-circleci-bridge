@@ -24,4 +24,6 @@ let
   });
 in
 
-hsPkgs.callPackage ./phab-circleci-bridge.nix {}
+  (hsPkgs.callPackage ./phab-circleci-bridge.nix {}).overrideAttrs (old: {
+    buildInputs = old.buildInputs ++ [pkgs.gitAndTools.gitFull];
+  })
