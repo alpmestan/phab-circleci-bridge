@@ -46,7 +46,7 @@ in {
       description = "The phab-circleci-bridge package to use";
     };
     state-file = mkOption {
-      default = "/var/phab-circleci/builds.bin";
+      default = "/var/lib/phab-circleci-bridge/builds.bin";
       type = types.nullOr types.str;
       description = "Desired location for the 'ongoing job queue' dumps";
     };
@@ -72,6 +72,7 @@ in {
         ExecStart = ''
           ${cfg.pkg}/bin/phab-circleci-bridge ${configFile} +RTS -N
         '';
+        StateDirectory = "phab-circleci-bridge";
         Type = "simple";
         User = cfg.user;
         Group = cfg.group;
