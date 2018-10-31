@@ -1,5 +1,5 @@
 { mkDerivation, aeson, base, bytestring, circlehs, config-manager
-, directory, filepath, http-api-data, http-client, http-client-tls
+, directory, exceptions, filepath, http-api-data, http-client, http-client-tls
 , mtl, process, serialise, servant-client, servant-server, stdenv
 , stm, temporary, text, time, unordered-containers, warp
 }:
@@ -10,7 +10,7 @@ mkDerivation {
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [
-    aeson base bytestring circlehs config-manager directory filepath
+    aeson base bytestring circlehs config-manager directory exceptions filepath
     http-api-data http-client http-client-tls mtl process serialise
     servant-client servant-server stm temporary text time
     unordered-containers warp

@@ -20,6 +20,7 @@ executable phab-circleci-bridge
                      , circlehs
                      , config-manager
                      , directory
+                     , exceptions
                      , filepath
                      , http-client
                      , http-client-tls
