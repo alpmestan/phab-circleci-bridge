@@ -11,6 +11,7 @@ let
     github_repo_project = "${cfg.github-repo}"
     circle_api_token = "${cfg.circleci-token}"
     phabricator_api_token = "${cfg.phabricator-token}"
+    work_dir = "${cfg.work-dir}"
   '';
 in {
   options.services.phab-circleci-bridge = {
@@ -49,6 +50,11 @@ in {
       default = "/var/lib/phab-circleci-bridge/builds.bin";
       type = types.nullOr types.str;
       description = "Desired location for the 'ongoing job queue' dumps";
+    };
+    work-dir = mkOption {
+      default = "/var/lib/phab-circleci-bridge";
+      type = types.nullOr types.str;
+      description = "Directory in which to clone the repositories";
     };
     user = mkOption {
       default = "phab-circleci";

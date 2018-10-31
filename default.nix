@@ -2,7 +2,7 @@
 
 let
   tweak = p: pkgs.haskell.lib.dontCheck (pkgs.haskell.lib.doJailbreak p);
-  hsPkgs = pkgs.haskell.packages.ghc822.override ({
+  hsPkgs = pkgs.haskell.packages.ghc843.override ({
     all-cabal-hashes = pkgs.fetchurl {
       url = "https://github.com/commercialhaskell/all-cabal-hashes/archive/a4416d2560b0ef1ce598737259b4fa989694ac57.tar.gz";
       sha256 = "1i2ifla8g7znqv82qja21aw0251jnx2cpj4zmqkqjy8bziq7l2yd";

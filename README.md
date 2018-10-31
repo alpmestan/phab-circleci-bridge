@@ -24,6 +24,7 @@ circle_api_token = "abcdef" # mandatory, no default value
 phabricator_api_token = "abcdef" # mandatory, no default value
 http_port = 8080 # this the default, when omitted
 state_file = "./builds.bin" # this is the default, when omitted
+work_dir = "./repos/"
 ```
 
 Only the API token entries are mandatory.

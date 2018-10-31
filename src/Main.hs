@@ -7,13 +7,12 @@ import qualified Codec.Serialise as CBOR
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
-import Control.Monad.IO.Class
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Monad.Except
 import Data.Aeson
 import Data.Foldable
 import Data.List
 import Data.Maybe
-import Data.Monoid
 import Data.Time
 import Network.CircleCI.Build
 import Network.HTTP.Client (Manager)
@@ -58,7 +57,6 @@ type PHID      = T.Text
 
 data Task = Task
   { taskRef  :: Ref
-  , taskDir  :: FilePath
   , taskPHID :: PHID
   , taskNum  :: BuildNumber
   , taskInfo :: Maybe BuildInfo
@@ -67,9 +65,9 @@ data Task = Task
 -- We drop the 'taskInfo' bit when encoding/decoding
 -- 'Task's.
 instance CBOR.Serialise Task where
-  encode Task{..} = CBOR.encode (taskRef, taskDir, taskPHID, n)
+  encode Task{..} = CBOR.encode (taskRef, taskPHID, n)
     where BuildNumber n = taskNum
-  decode = (\(ref, dir, phid, num) -> Task ref dir phid (BuildNumber num) Nothing)
+  decode = (\(ref, phid, num) -> Task ref phid (BuildNumber num) Nothing)
        <$> CBOR.decode
 
 instance CBOR.Serialise a => CBOR.Serialise (Q a) where
@@ -116,7 +114,9 @@ setTasks :: MonadIO m => WorkQueue -> Q Task -> m ()
 setTasks queue tasks = liftIO $ atomically (writeTVar queue tasks)
 
 newtype App a = App { unApp :: ExceptT AppError IO a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadError AppError)
+  deriving ( Functor, Applicative, Monad
+           , MonadIO, MonadError AppError, MonadCatch, MonadMask, MonadThrow
+           )
 
 runAppIO :: App () -> IO ()
 runAppIO m = runExceptT (unApp m) >>= \case
@@ -267,14 +267,13 @@ linkCircleBuild cfg bi = "https://circleci.com/gh/"
 -- workaround but to make sure the hosts are known in advance?
 enqueueJob :: Config -> WorkQueue -> String -> Remote -> Ref -> PHID -> App BuildInfo
 enqueueJob cfg queue jobType phabRepoUrl ref phid = do
-  tmp <- liftIO getCanonicalTemporaryDirectory
-  path <- liftIO (createTempDirectory tmp "ghc-diffs")
-  cmd "git" ["clone", phabRepoUrl, path]
-
-  withCurrentDirectory' path $ do
-    cmd "git" ["remote", "add", "gh", T.unpack (githubRepoUrl cfg)]
-    cmd "git" ["checkout", ref]
-    cmd "git" ["push", "gh", ref]
+  withTempDirectory (workDir cfg) ("ghc-diffs") $ \tempdir -> do
+    cmd "git" ["clone", phabRepoUrl, tempdir]
+    withCurrentDirectory' tempdir $ do
+      cmd "git" ["remote", "add", "gh", T.unpack (githubRepoUrl cfg)]
+      cmd "git" ["checkout", ref]
+      cmd "git" ["checkout", "-b", newRef]
+      cmd "git" ["push", "gh", newRef]
 
   -- As sooon as the code is up, we can ask Circle CI to build it right away.
   -- If there are too many builds running already, Circle CI will simply
@@ -286,17 +285,20 @@ enqueueJob cfg queue jobType phabRepoUrl ref phid = do
   -- The task is handed to the "build watcher thread", which
   -- repeatedly hits Circle CI to get updates on the ongoing
   -- builds.
-  let task = Task ref path phid (number buildInfo) (Just buildInfo)
+  let task = Task ref phid (number buildInfo) (Just buildInfo)
   pushTask task queue
   l [ summarise task ++ " pushed in the queue" ]
 
   return buildInfo
 
-  where opts = TriggerBuildOptions (BuildTag $ T.pack (cleanRef ref))
+  where opts = TriggerBuildOptions (BuildTag $ T.pack (cleanRef newRef))
           (HashMap.fromList [("CIRCLE_JOB", T.pack jobType)])
         cleanRef s
           | "refs/tags/" `isPrefixOf` s = drop 10 s
           | otherwise = s
+
+        newRef = ref ++ "-" ++ jobType
+
 
 -- * Worker
 
@@ -324,7 +326,6 @@ builder cfg queue = do
             Nothing -> return (Just t')
             Just _  -> do
               l ("Build finished!" : summariseLong t')
-              runCleanup t'
               return Nothing
 
     -- The 'Nothing's we get come from builds that
@@ -457,6 +458,7 @@ data Config = Config
   , phabApiToken :: String
   , httpPort :: Int
   , stateFile :: FilePath
+  , workDir :: FilePath
   }
 
 getConfig :: FilePath -> IO (Config, Q Task)
@@ -471,7 +473,10 @@ getConfig fp = do
                <*> Conf.lookup "phabricator_api_token" c
                <*> pure (Conf.lookupDefault 8080 "http_port" c)
                <*> pure (Conf.lookupDefault "builds.bin" "state_file" c)
+               <*> pure (Conf.lookupDefault "/var/lib/phab-circleci-bridge/" "work_dir" c)
   finalConf <- either (\e -> error $ "Configuration error: " ++ show e) pure cfg
+  workDirExists <- doesDirectoryExist (workDir finalConf)
+  when (not workDirExists) $ createDirectoryIfMissing True (workDir finalConf)
   stateFileExists <- doesFileExist (stateFile finalConf)
   if stateFileExists
     then (finalConf,) <$> readStateFile (stateFile finalConf)
@@ -481,12 +486,6 @@ projectPoint :: Config -> ProjectPoint
 projectPoint cfg = ProjectPoint (githubRepoUser cfg) (githubRepoProject cfg)
 
 -- * Utilities
-
-runCleanup :: Task -> IO ()
-runCleanup t = do
-  runAppIO . withCurrentDirectory' (taskDir t) $
-    cmd "git" ["push", "--delete", "gh", taskRef t]
-  removeDirectoryRecursive (taskDir t)
 
 cmd :: FilePath -> [String] -> App ()
 cmd prog args = do
