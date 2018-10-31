@@ -273,7 +273,7 @@ enqueueJob cfg queue jobType phabRepoUrl ref phid = do
       cmd "git" ["remote", "add", "gh", T.unpack (githubRepoUrl cfg)]
       cmd "git" ["checkout", ref]
       cmd "git" ["tag", newRef]
-      cmd "git" ["push", "gh", newRef]
+      cmd "git" ["push", "gh", "tag", newRef]
 
   -- As sooon as the code is up, we can ask Circle CI to build it right away.
   -- If there are too many builds running already, Circle CI will simply
