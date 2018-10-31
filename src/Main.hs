@@ -272,7 +272,7 @@ enqueueJob cfg queue jobType phabRepoUrl ref phid = do
     withCurrentDirectory' tempdir $ do
       cmd "git" ["remote", "add", "gh", T.unpack (githubRepoUrl cfg)]
       cmd "git" ["checkout", ref]
-      cmd "git" ["checkout", "-b", newRef]
+      cmd "git" ["tag", newRef]
       cmd "git" ["push", "gh", newRef]
 
   -- As sooon as the code is up, we can ask Circle CI to build it right away.
@@ -291,7 +291,7 @@ enqueueJob cfg queue jobType phabRepoUrl ref phid = do
 
   return buildInfo
 
-  where opts = TriggerBuildOptions (BuildRevision $ T.pack (cleanRef newRef))
+  where opts = TriggerBuildOptions (BuildTag $ T.pack (cleanRef newRef))
           (HashMap.fromList [("CIRCLE_JOB", T.pack jobType)])
         cleanRef s
           | "refs/tags/" `isPrefixOf` s = drop 10 s
