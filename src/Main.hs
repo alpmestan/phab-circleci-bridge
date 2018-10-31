@@ -291,7 +291,7 @@ enqueueJob cfg queue jobType phabRepoUrl ref phid = do
 
   return buildInfo
 
-  where opts = TriggerBuildOptions (BuildTag $ T.pack (cleanRef newRef))
+  where opts = TriggerBuildOptions (BuildRevision $ T.pack (cleanRef newRef))
           (HashMap.fromList [("CIRCLE_JOB", T.pack jobType)])
         cleanRef s
           | "refs/tags/" `isPrefixOf` s = drop 10 s
