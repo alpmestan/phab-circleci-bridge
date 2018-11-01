@@ -23,6 +23,7 @@ import Servant.Client
 import System.Directory
 import System.Environment
 import System.Exit
+import System.FilePath
 import System.IO
 import System.IO.Temp
 import System.Process
@@ -268,12 +269,12 @@ linkCircleBuild cfg bi = "https://circleci.com/gh/"
 enqueueJob :: Config -> WorkQueue -> String -> Remote -> Ref -> PHID -> App BuildInfo
 enqueueJob cfg queue jobType phabRepoUrl ref phid = do
   withTempDirectory (workDir cfg) "ghc-diffs" $ \tempdir -> do
+    let gitDir = "--git-dir=" ++ tempdir </> ".git"
     cmd "git" ["clone", phabRepoUrl, tempdir]
-    withCurrentDirectory' tempdir $ do
-      cmd "git" ["remote", "add", "gh", T.unpack (githubRepoUrl cfg)]
-      cmd "git" ["checkout", ref]
-      cmd "git" ["tag", newRef]
-      cmd "git" ["push", "gh", "tag", newRef]
+    cmd "git" [gitDir, "remote", "add", "gh", T.unpack (githubRepoUrl cfg)]
+    cmd "git" [gitDir, "checkout", ref]
+    cmd "git" [gitDir, "tag", newRef]
+    cmd "git" [gitDir, "push", "gh", "tag", newRef]
 
   -- As sooon as the code is up, we can ask Circle CI to build it right away.
   -- If there are too many builds running already, Circle CI will simply
@@ -477,7 +478,6 @@ getConfig fp = do
   finalConf <- either (\e -> error $ "Configuration error: " ++ show e) pure cfg
   workDirExists <- doesDirectoryExist (workDir finalConf)
   when (not workDirExists) $ createDirectoryIfMissing True (workDir finalConf)
-  setCurrentDirectory (workDir finalConf)
   stateFileExists <- doesFileExist (stateFile finalConf)
   if stateFileExists
     then (finalConf,) <$> readStateFile (stateFile finalConf)
@@ -497,14 +497,6 @@ cmd prog args = do
     ExitFailure n -> do
       l ["... Not OK."]
       badExitCode n prog args out err
-
-withCurrentDirectory' :: FilePath -> App a -> App a
-withCurrentDirectory' dir act = do
-  old <- liftIO getCurrentDirectory
-  liftIO (setCurrentDirectory dir)
-  r <- act
-  liftIO (setCurrentDirectory old)
-  return r
 
 -- * Errors
 
