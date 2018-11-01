@@ -267,7 +267,7 @@ linkCircleBuild cfg bi = "https://circleci.com/gh/"
 -- workaround but to make sure the hosts are known in advance?
 enqueueJob :: Config -> WorkQueue -> String -> Remote -> Ref -> PHID -> App BuildInfo
 enqueueJob cfg queue jobType phabRepoUrl ref phid = do
-  withTempDirectory (workDir cfg) ("ghc-diffs") $ \tempdir -> do
+  withTempDirectory (workDir cfg) "ghc-diffs" $ \tempdir -> do
     cmd "git" ["clone", phabRepoUrl, tempdir]
     withCurrentDirectory' tempdir $ do
       cmd "git" ["remote", "add", "gh", T.unpack (githubRepoUrl cfg)]
@@ -477,6 +477,7 @@ getConfig fp = do
   finalConf <- either (\e -> error $ "Configuration error: " ++ show e) pure cfg
   workDirExists <- doesDirectoryExist (workDir finalConf)
   when (not workDirExists) $ createDirectoryIfMissing True (workDir finalConf)
+  setCurrentDirectory (workDir finalConf)
   stateFileExists <- doesFileExist (stateFile finalConf)
   if stateFileExists
     then (finalConf,) <$> readStateFile (stateFile finalConf)
